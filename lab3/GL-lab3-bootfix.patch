@@ -1,0 +1,128 @@
+diff --git a/ldscripts/sections.ld b/ldscripts/sections.ld
+index 6651667..2ab67c9 100644
+--- a/ldscripts/sections.ld
++++ b/ldscripts/sections.ld
+@@ -102,7 +102,7 @@ SECTIONS
+          */
+         *(.after_vectors .after_vectors.*)	/* Startup code and ISR */
+ 
+-    } >FLASH
++    } > RAM
+ 
+     .inits : ALIGN(4)
+     {
+@@ -205,7 +205,7 @@ SECTIONS
+ 		KEEP(*(.fini_array))
+ 		PROVIDE_HIDDEN (__fini_array_end = .);
+ 
+-    } >FLASH
++    } >RAM
+ 
+     /*
+      * For some STRx devices, the beginning of the startup code
+@@ -214,9 +214,7 @@ SECTIONS
+     .flashtext : ALIGN(4)
+     {
+         *(.flashtext .flashtext.*)	/* Startup code */
+-    } >FLASH
+- 
+-    
++    } >RAM
+     /*
+      * The program code is stored in the .text section, 
+      * which goes to FLASH.
+@@ -242,20 +240,19 @@ SECTIONS
+         *(.glue_7)
+         *(.glue_7t)
+ 
+-    } >FLASH
++    } >RAM
+ 
+ 	/* ARM magic sections */
+ 	.ARM.extab : ALIGN(4)
+    	{
+        *(.ARM.extab* .gnu.linkonce.armextab.*)
+-   	} > FLASH
+-   	
++   	} > RAM
+     . = ALIGN(4);
+    	__exidx_start = .;   	
+    	.ARM.exidx : ALIGN(4)
+    	{
+        *(.ARM.exidx* .gnu.linkonce.armexidx.*)
+-   	} > FLASH
++   	} > RAM 
+    	__exidx_end = .;
+    	
+     . = ALIGN(4);
+@@ -278,7 +275,7 @@ SECTIONS
+        FILL(0xFF)
+        *(.data.CCMRAM .data.CCMRAM.*)
+        . = ALIGN(4) ;
+-    } > CCMRAM AT>FLASH
++    } > CCMRAM AT>RAM
+ 
+ 	/* 
+      * This address is used by the startup code to 
+@@ -311,8 +308,7 @@ SECTIONS
+         _edata = . ;        	/* STM specific definition */
+         __data_end__ = . ;
+ 
+-    } >RAM AT>FLASH
+-    
++    } >RAM AT>RAM
+     /*
+      * The uninitialised data sections. NOLOAD is used to avoid
+      * the "section `.bss' type changed to PROGBITS" warning
+diff --git a/system/src/cmsis/system_stm32f4xx.c b/system/src/cmsis/system_stm32f4xx.c
+index ec2e746..47b5b7b 100644
+--- a/system/src/cmsis/system_stm32f4xx.c
++++ b/system/src/cmsis/system_stm32f4xx.c
+@@ -107,7 +107,7 @@
+ 
+ /*!< Uncomment the following line if you need to relocate your vector Table in
+      Internal SRAM. */
+-/* #define VECT_TAB_SRAM */
++#define VECT_TAB_SRAM
+ #define VECT_TAB_OFFSET  0x00 /*!< Vector Table base offset field. 
+                                    This value must be a multiple of 0x200. */
+ /******************************************************************************/
+diff --git a/system/src/newlib/_startup.c b/system/src/newlib/_startup.c
+index cf335fe..19c3c78 100644
+--- a/system/src/newlib/_startup.c
++++ b/system/src/newlib/_startup.c
+@@ -263,34 +263,6 @@ _start (void)
+   __data_begin_guard = DATA_GUARD_BAD_VALUE;
+   __data_end_guard = DATA_GUARD_BAD_VALUE;
+ #endif
+-
+-#if !defined(OS_INCLUDE_STARTUP_INIT_MULTIPLE_RAM_SECTIONS)
+-  // Copy the DATA segment from Flash to RAM (inlined).
+-  __initialize_data(&_sidata, &_sdata, &_edata);
+-#else
+-
+-  // Copy the data sections from flash to SRAM.
+-  for (unsigned int* p = &__data_regions_array_start;
+-      p < &__data_regions_array_end;)
+-    {
+-      unsigned int* from = (unsigned int *) (*p++);
+-      unsigned int* region_begin = (unsigned int *) (*p++);
+-      unsigned int* region_end = (unsigned int *) (*p++);
+-
+-      __initialize_data (from, region_begin, region_end);
+-    }
+-
+-#endif
+-
+-#if defined(DEBUG) && (OS_INCLUDE_STARTUP_GUARD_CHECKS)
+-  if ((__data_begin_guard != DATA_BEGIN_GUARD_VALUE)
+-      || (__data_end_guard != DATA_END_GUARD_VALUE))
+-    {
+-      for (;;)
+-	;
+-    }
+-#endif
+-
+ #if defined(DEBUG) && (OS_INCLUDE_STARTUP_GUARD_CHECKS)
+   __bss_begin_guard = BSS_GUARD_BAD_VALUE;
+   __bss_end_guard = BSS_GUARD_BAD_VALUE;
